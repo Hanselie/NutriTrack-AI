@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NutriTrack Personal - Pelacak Nutrisi</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-child"></i> NutriTrack Personal</h1>
+                <p class="subtitle">Pelacak Nutrisi dengan Machine Learning Personal</p>
+                <p class="date-display">{{ today_date }}</p>
+                
+                <div class="stats-bar">
+                    <div class="stat-item">
+                        <i class="fas fa-utensils"></i>
+                        <span>{{ meal_count_today }} Makanan Hari Ini</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-brain"></i>
+                        <span>ML Personal Active</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-clock"></i>
+                        <span>
+                            {% if meal_count_today == 0 %}
+                                Makan berikutnya: <span class="text-muted">Belum ada rekomendasi</span>
+                            {% else %}
+                                Makan berikutnya: {{ next_meal_prediction }}
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <section class="card add-meal-section">
+                <h2><i class="fas fa-plus-circle"></i> Tambah Makanan Baru</h2>
+                
+                <form id="mealForm">
+                    <div class="form-group">
+                        <label for="meal_time"><i class="fas fa-clock"></i> Waktu Makan</label>
+                        <select id="meal_time" name="meal_time" required>
+                            <option value="">Pilih waktu makan</option>
+                            {% for time in meal_times %}
+                            <option value="{{ time }}">{{ time.replace('_', ' ') | title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="food_name"><i class="fas fa-utensils"></i> Nama Makanan</label>
+                        <input type="text" id="food_name" name="food_name" 
+                               placeholder="Contoh: nasi goreng, ayam bakar, telur rebus" required>
+                        <small class="hint">Bisa dalam Bahasa Indonesia</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label><i class="fas fa-weight"></i> Jumlah Porsi</label>
+                        <div class="portion-options">
+                            <label class="portion-option">
+                                <input type="radio" name="portion" value="0.25" checked>
+                                <span class="portion-label">
+                                    <strong>0.25</strong>
+                                    <small>≈ 50g</small>
+                                </span>
+                            </label>
+                            <label class="portion-option">
+                                <input type="radio" name="portion" value="0.5">
+                                <span class="portion-label">
+                                    <strong>0.5</strong>
+                                    <small>≈ 100g</small>
+                                </span>
+                            </label>
+                            <label class="portion-option">
+                                <input type="radio" name="portion" value="0.75">
+                                <span class="portion-label">
+                                    <strong>0.75</strong>
+                                    <small>≈ 150g</small>
+                                </span>
+                            </label>
+                            <label class="portion-option">
+                                <input type="radio" name="portion" value="1">
+                                <span class="portion-label">
+                                    <strong>1</strong>
+                                    <small>≈ 200g</small>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-submit" id="submitBtn">
+                        <i class="fas fa-plus"></i> Tambah Makanan
+                    </button>
+                </form>
+            </section>
+
+            {% if insights %}
+            <section class="card insights-section">
+                <h2><i class="fas fa-lightbulb"></i> Insight Personal</h2>
+                <div class="insights-grid">
+                    {% for insight in insights %}
+                    <div class="insight-card insight-{{ insight.type }}">
+                        <div class="insight-icon">{{ insight.icon }}</div>
+                        <div class="insight-content">
+                            <p>{{ insight.text }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+
+            {% if recommendations and meal_count_today > 0 %}
+            <section class="card recommendations-section">
+                <h2><i class="fas fa-robot"></i> Rekomendasi Personal</h2>
+                <div class="recommendations-grid">
+                    {% for rec in recommendations %}
+                    <div class="recommendation-card">
+                        <div class="recommendation-header">
+                            <div class="rec-icon">{{ rec.icon }}</div>
+                            <div class="rec-type">{{ rec.type | title }}</div>
+                        </div>
+                        
+                        <div class="recommendation-foods">
+                            {% for food in rec.foods %}
+                            <span class="food-tag">{{ food | title }}</span>
+                            {% endfor %}
+                        </div>
+                        
+                        <p class="recommendation-reason">{{ rec.reason }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% elif meal_count_today == 0 %}
+            <section class="card recommendations-section">
+                <h2><i class="fas fa-robot"></i> Rekomendasi Personal ML</h2>
+                <div class="empty-state">
+                    <i class="fas fa-info-circle fa-2x"></i>
+                    <p>Belum ada data untuk rekomendasi</p>
+                    <p class="empty-hint">Tambahkan makanan pertama untuk mendapatkan rekomendasi personal</p>
+                </div>
+            </section>
+            {% endif %}
+
+            <section class="card progress-section">
+                <h2><i class="fas fa-chart-line"></i> Progress Nutrisi Hari Ini</h2>
+                
+                <div class="nutrient-grid">
+                    
+                    {% for nutrient, requirement in requirements.items() %}
+                    {% if nutrient in ['kalori', 'protein', 'karbo', 'lemak'] %}
+                    {% set current = totals.get(nutrient, 0) %}
+                    {% set percentage = percentages.get(nutrient, 0) %}
+                    {% set display_percentage = percentage if percentage <= 100 else 100 %}
+                    {% set progress_color = get_progress_color(percentage) %}
+                    
+                    <div class="nutrient-card">
+                        <div class="nutrient-header">
+                            <span class="nutrient-name">{{ nutrient | replace('_', ' ') | title }}</span>
+                            <span class="nutrient-value">
+                                {{ "%.1f"|format(current) }} / {{ requirement }}
+                                {% if nutrient == 'kalori' %}kkal{% else %}g{% endif %}
+                            </span>
+                        </div>
+                        
+                        <div class="progress-container">
+                            <div class="progress-bar">
+                                <div class="progress-fill" 
+                                    data-percentage="{{ display_percentage }}"
+                                    data-color="{{ progress_color }}">
+                                    <span class="progress-text">{{ "%.1f"|format(percentage) }}%</span>
+                                </div>
+                            </div>
+                            
+                            {% if percentage > 100 %}
+                            <div class="excess-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Kelebihan {{ "%.1f"|format(percentage - 100) }}%
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="nutrient-details">
+                            <small>
+                                {% if percentage < 70 %}
+                                <span class="text-warning">Perlu ditambah</span>
+                                {% elif percentage < 90 %}
+                                <span class="text-good">Cukup baik</span>
+                                {% else %}
+                                <span class="text-excellent">Sangat baik</span>
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="card meals-section">
+                <div class="meals-header">
+                    <h2><i class="fas fa-history"></i> Makanan Hari Ini</h2>
+                    {% if meals and meals|length > 0 %}
+                    <button onclick="resetToday()" class="btn-reset" id="resetBtn">
+                        <i class="fas fa-redo"></i> Reset Hari Ini
+                    </button>
+                    {% endif %}
+                </div>
+                
+                {% if meals and meals|length > 0 %}
+                <div class="meals-list">
+                    {% for meal in meals %}
+                    <div class="meal-item" id="meal-{{ meal.id }}">
+                        <div class="meal-time-badge">
+                            {{ meal.time.replace('_', ' ') | title }}
+                        </div>
+                        
+                        <div class="meal-content">
+                            <div class="meal-main">
+                                <h3 class="meal-name">{{ meal.food | title }}</h3>
+                                <div class="meal-meta">
+                                    <span class="portion-badge">{{ meal.portion }} porsi</span>
+                                    <span class="calorie-badge">
+                                        <i class="fas fa-fire"></i>
+                                        {{ "%.0f"|format(meal.nutrition.kalori) }} kkal
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="meal-nutrition">
+                                <div class="nutrient-chip">
+                                    <span class="chip-label">P</span>
+                                    <span class="chip-value">{{ "%.1f"|format(meal.nutrition.protein) }}g</span>
+                                </div>
+                                <div class="nutrient-chip">
+                                    <span class="chip-label">K</span>
+                                    <span class="chip-value">{{ "%.1f"|format(meal.nutrition.karbo) }}g</span>
+                                </div>
+                                <div class="nutrient-chip">
+                                    <span class="chip-label">L</span>
+                                    <span class="chip-value">{{ "%.1f"|format(meal.nutrition.lemak) }}g</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="meal-actions">
+                            <button class="btn-remove" onclick="removeMeal('{{ meal.id }}')" title="Hapus">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-utensils fa-2x"></i>
+                    <p>Belum ada makanan yang dicatat hari ini</p>
+                    <p class="empty-hint">Mulai dengan menambahkan makanan pertama Anda</p>
+                </div>
+                {% endif %}
+            </section>
+
+            <section class="card info-section">
+                <div class="info-content">
+                    <h3><i class="fas fa-info-circle"></i> Tentang Sistem</h3>
+                    <p>Sistem ini akan menganalisis pola makan personal Anda dan memberikan rekomendasi yang semakin akurat seiring waktu.</p>
+                    
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <i class="fas fa-database"></i>
+                            <div>
+                                <strong>Data Personal</strong>
+                                <small>Hanya belajar dari data Anda sendiri</small>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <i class="fas fa-chart-bar"></i>
+                            <div>
+                                <strong>Analisis Pola</strong>
+                                <small>Mendeteksi kebiasaan makan</small>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <i class="fas fa-robot"></i>
+                            <div>
+                                <strong>Rekomendasi</strong>
+                                <small>Saran personal berdasarkan pola</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="resetAllData()" class="btn-reset-all" id="resetAllBtn">
+                        <i class="fas fa-trash-alt"></i> Reset Semua Data
+                    </button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        let isSubmitting = false;
+        
+        document.getElementById('mealForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (isSubmitting) return;
+            
+            const mealTime = document.getElementById('meal_time').value;
+            const foodName = document.getElementById('food_name').value.trim();
+            const portion = document.querySelector('input[name="portion"]:checked');
+            
+            if (!mealTime || !foodName || !portion) {
+                showAlert('Harap isi semua field yang diperlukan', 'error');
+                return;
+            }
+            
+            isSubmitting = true;
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.innerHTML;
+            
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghitung...';
+            submitBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/add_meal', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        meal_time: mealTime,
+                        food_name: foodName,
+                        portion: portion.value
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Makanan berhasil ditambahkan! Sistem ML memperbarui pola.', 'success');
+                    
+                    document.getElementById('mealForm').reset();
+                    document.querySelector('input[name="portion"][value="0.25"]').checked = true;
+                    
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                    
+                } else {
+                    showAlert('Error: ' + (data.error || 'Gagal menambah makanan'), 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+                console.error('Error:', error);
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+                isSubmitting = false;
+            }
+        });
+        
+        async function removeMeal(mealId) {
+            if (!confirm('Apakah Anda yakin ingin menghapus makanan ini?')) {
+                return;
+            }
+            
+            const mealElement = document.getElementById(`meal-${mealId}`);
+            if (mealElement) {
+                mealElement.style.opacity = '0.5';
+            }
+            
+            try {
+                const response = await fetch(`/remove_meal/${mealId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Makanan berhasil dihapus!', 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showAlert('Error: ' + (data.error || 'Gagal menghapus makanan'), 'error');
+                    if (mealElement) {
+                        mealElement.style.opacity = '1';
+                    }
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+                if (mealElement) {
+                    mealElement.style.opacity = '1';
+                }
+                console.error('Error:', error);
+            }
+        }
+        
+        async function resetToday() {
+            if (!confirm('Apakah Anda yakin ingin menghapus semua makanan hari ini?')) {
+                return;
+            }
+            
+            const resetBtn = document.getElementById('resetBtn');
+            const originalText = resetBtn.innerHTML;
+            
+            resetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+            resetBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/reset_today', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Semua makanan hari ini telah direset!', 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showAlert('Error: ' + (data.error || 'Gagal reset'), 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+                console.error('Error:', error);
+            } finally {
+                resetBtn.innerHTML = originalText;
+                resetBtn.disabled = false;
+            }
+        }
+        
+        async function resetAllData() {
+            if (!confirm('Apakah Anda yakin ingin menghapus SEMUA data? \n\nIni akan menghapus seluruh history dan pola ML yang sudah dipelajari.')) {
+                return;
+            }
+            
+            const resetAllBtn = document.getElementById('resetAllBtn');
+            const originalText = resetAllBtn.innerHTML;
+            
+            resetAllBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
+            resetAllBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/reset_all', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('Semua data telah direset! Mulai dari awal.', 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showAlert('Error: ' + (data.error || 'Gagal reset'), 'error');
+                }
+            } catch (error) {
+                showAlert('Error: ' + error.message, 'error');
+                console.error('Error:', error);
+            } finally {
+                resetAllBtn.innerHTML = originalText;
+                resetAllBtn.disabled = false;
+            }
+        }
+        
+        function startAutoRefresh() {
+            setInterval(async () => {
+                try {
+                    const response = await fetch('/get_stats');
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.meal_count > 0 && data.recommendations && data.recommendations.length > 0) {
+                            const nextMealElement = document.querySelector('.stat-item:nth-child(3) span');
+                            if (nextMealElement) {
+                                const foods = data.recommendations[0].foods || [];
+                                if (foods.length > 0) {
+                                    nextMealElement.innerHTML = `Makan berikutnya: ${foods.slice(0, 3).join(', ')}`;
+                                }
+                            }
+                        }
+                        console.log('Stats updated:', new Date().toLocaleTimeString());
+                    }
+                } catch (error) {
+                    console.log('Auto-refresh error:', error);
+                }
+            }, 60000);
+        }
+        
+        function updateProgressBars() {
+            document.querySelectorAll('.progress-fill').forEach(bar => {
+                const percentage = bar.getAttribute('data-percentage');
+                const color = bar.getAttribute('data-color');
+                
+                bar.style.width = `${percentage}%`;
+                bar.style.backgroundColor = color;
+                
+                const textElement = bar.querySelector('.progress-text');
+                if (textElement) {
+                    const perc = parseFloat(percentage);
+                    if (perc < 30) {
+                        textElement.style.color = '#333';
+                        textElement.style.textShadow = 'none';
+                    }
+                }
+            });
+        }
+        
+        function showAlert(message, type = 'info') {
+            const existingAlert = document.querySelector('.custom-alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+            
+            const alert = document.createElement('div');
+            alert.className = `custom-alert alert-${type}`;
+            alert.innerHTML = `
+                <div class="alert-content">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+                <button onclick="this.parentElement.remove()" class="alert-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            
+            document.body.appendChild(alert);
+            
+            setTimeout(() => {
+                if (alert.parentElement) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            startAutoRefresh();
+            updateProgressBars();
+            document.getElementById('food_name').focus();
+        });
+    </script>
+</body>
+</html>

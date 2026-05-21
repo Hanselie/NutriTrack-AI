@@ -1,0 +1,47 @@
+[
+  {
+    "id": "20251217160401",
+    "timestamp": "2025-12-17T16:04:01.921453",
+    "date": "2025-12-17",
+    "time": "sarapan",
+    "food": "nasi goreng",
+    "portion": 1.0,
+    "nutrition": {
+      "kalori": 260.0,
+      "protein": 5.4,
+      "karbo": 56.0,
+      "lemak": 0.6
+    },
+    "category": "karbo"
+  },
+  {
+    "id": "20251217160456",
+    "timestamp": "2025-12-17T16:04:56.496707",
+    "date": "2025-12-17",
+    "time": "makan_siang",
+    "food": "yogurt",
+    "portion": 0.75,
+    "nutrition": {
+      "kalori": 88.5,
+      "protein": 15.0,
+      "karbo": 5.4,
+      "lemak": 0.6
+    },
+    "category": "susu"
+  },
+  {
+    "id": "20251217160513",
+    "timestamp": "2025-12-17T16:05:13.669765",
+    "date": "2025-12-17",
+    "time": "makan_malam",
+    "food": "nasi goreng",
+    "portion": 1.0,
+    "nutrition": {
+      "kalori": 260.0,
+      "protein": 5.4,
+      "karbo": 56.0,
+      "lemak": 0.6
+    },
+    "category": "karbo"
+  }
+]

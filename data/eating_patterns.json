@@ -1,0 +1,35 @@
+{
+  "favorite_times": {
+    "sarapan": 1,
+    "makan_siang": 1,
+    "makan_malam": 1
+  },
+  "favorite_categories": {
+    "karbo": 2,
+    "susu": 1
+  },
+  "common_foods": {
+    "nasi goreng": 2,
+    "yogurt": 1
+  },
+  "meal_intervals": [],
+  "daily_totals": {
+    "2025-12-17": {
+      "meals": 3,
+      "total_calories": 608.5,
+      "total_protein": 25.799999999999997,
+      "total_karbo": 117.4,
+      "total_lemak": 1.7999999999999998
+    }
+  },
+  "last_updated": "2025-12-17T16:05:13.684564",
+  "avg_interval_hours": 4.0,
+  "interval_consistency": 0,
+  "most_common_time": "sarapan",
+  "most_common_category": "karbo",
+  "daily_averages": {
+    "kalori": 608.5,
+    "protein": 25.8,
+    "days_analyzed": 1
+  }
+}
